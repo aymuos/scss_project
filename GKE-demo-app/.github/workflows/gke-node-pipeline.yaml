@@ -1,0 +1,62 @@
+# what we want to acheive 
+# node app with react client that deploys to GKE
+
+name : Node GKE pipeline
+run-name: ${{github.event.head_commit.message}} by @${{ github.actor}}
+
+on:
+  workflow_dispatch:       # allows to manually run the pipeline
+    inputs:
+      tag:
+        description: 'Define release tag for deployment'
+        required: true
+        type: string
+
+  push:
+    branches:
+      - 'some_branch_name'
+
+  pull_request:
+    branches:
+      - 'some_branch_name2'
+
+# env variables can be defined here
+
+env:
+  SPINNAKER_WEBHOOK: example_webhook_name
+  ARTIFACT_REGISTRY: example.docker.com
+
+
+jobs:                 # atleast 1 job must be present under jobs
+
+  # versioning , testing , dockerize , deploy
+
+  Version:
+    name: 'versioning'
+    runs-on: 'ubuntu-latest'
+    container:
+      image: 'node:20'            # can define a base container image on which the versioning step will run 
+      credentials:
+        username: ${{secrets.ARTIFACTORY_USER}}
+        password: ${{secrets.ARTIFACTORY_PASS}}                  # if the docker hub/artifactory has username password , those can be supplied like this 
+      env:
+        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}                  # Personal access token for github to run inside container
+        # can mention more environment variables here that will be used inside the container
+    steps:
+      - name: 'Checkout code'
+        uses: 'actions/checkout@v4'
+      - name: 'Branch name extractor'
+        shell: bash
+        run: echo "branch=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_OUTPUT
+        id: extract_branch
+
+      - name: 'Short branch name'
+        shell: bash
+        run: |
+            short_branch = $(echo "${{steps.extract_branch.outputs.branch}}" | cut -c1-24 | sed 's/[^[:alnum]-]//g' | sed 's/[^[:alnum:]]\+$//')
+
+    outputs:
+      branch: ${{steps.extract_branch.outputs.branch}}
+      full_branch_name: ${{steps.extract_branch.outputs.branch}}  # notice how to push as outputs
+
+
