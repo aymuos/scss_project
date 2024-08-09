@@ -1,1 +1,3 @@
 # aymuos-code-stash
+
+#init
